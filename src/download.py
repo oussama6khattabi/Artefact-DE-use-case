@@ -13,7 +13,7 @@ OUTPUT = DATA_DIR / "trips.csv"
 
 def download_trips():
     start = os.getenv("START", "2022-12-15T00:00:00")
-    end = os.getenv("END", "2023-12-30T00:00:00")
+    end = os.getenv("END", "2022-12-30T00:00:00")
     limit = int(os.getenv("LIMIT", "1000"))
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)

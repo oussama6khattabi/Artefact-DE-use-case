@@ -78,15 +78,12 @@ Les résultats sont disponibles dans les répertoires `data/bronze`, `data/silve
 - **Gold — Curated :** produit les agrégations métier utilisées pour l’analyse et le reporting.
 
 ## 4. Choix techniques et arbitrages
-
+- **Periode choisie :** 15 decembre 2022 - 30 decembre 2022.
 - **Python et l’API Socrata :** pagination et filtrage temporel pour maîtriser le volume téléchargé.
-- **PySpark :** transformations déclaratives, typage explicite et agrégations réutilisables.
 - **Apache Airflow :** orchestration des tâches, gestion des dépendances et suivi des exécutions.
 - **Docker Compose :** environnement reproductible sans installation locale de Java ou Spark.
-- **Gestion des rejets :** les erreurs bloquantes sont isolées dans `rejected.csv`. Les anomalies non bloquantes sont signalées afin de préserver les données potentiellement utiles.
-- **CSV unique par sortie :** format simple à inspecter et à livrer. L’utilisation de `collect()` facilite l’écriture d’un fichier unique, mais rapatrie les données en mémoire côté pilote ; elle n’est donc adaptée qu’à des volumes limités.
 
-La déduplication repose sur `trip_id`, supposé identifier un trajet de manière unique.
+
 
 ## 5. Agrégations Gold
 
@@ -100,10 +97,7 @@ Chaque agrégation est écrite dans un fichier CSV distinct.
 | `company_performance.csv` | Par compagnie | Nombre de trajets, revenu total, valeur moyenne, durée moyenne, pourcentage moyen de pourboire et vitesse moyenne. Permet de comparer l’activité entre compagnies. |
 | `popular_routes.csv` | Par couple zone de départ–zone d’arrivée | Nombre de trajets, revenu total, distance moyenne et durée moyenne. Permet d’identifier les itinéraires les plus fréquentés et leur poids économique. |
 
-**Définitions :**
-- Le revenu est calculé à partir de `trip_total`.
-- Le pourcentage de pourboire est calculé comme `tips / fare × 100`, uniquement lorsque `fare` est positif.
-- Les zones ou compagnies manquantes doivent être interprétées comme des valeurs inconnues, et non comme des catégories métier réelles.
+
 
 ## 6. Avec plus de temps
 

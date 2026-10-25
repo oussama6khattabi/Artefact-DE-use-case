@@ -25,17 +25,7 @@ docker compose up -d
 
 **3. Créer l’utilisateur administrateur Airflow**
 
-```bash
-docker compose exec airflow airflow users create \
-  --username admin \
-  --password admin \
-  --firstname Admin \
-  --lastname User \
-  --role Admin \
-  --email admin@example.com
-```
-
-Si l’utilisateur existe déjà, réinitialiser son mot de passe :
+Réinitialiser le mot de passe du user (admin) :
 
 ```bash
 docker compose exec airflow airflow users reset-password \
@@ -43,7 +33,6 @@ docker compose exec airflow airflow users reset-password \
   --password admin
 ```
 
-Ces commandes supposent que le service Docker Compose s’appelle `airflow`.
 
 **4. Accéder à Airflow**
 
@@ -53,32 +42,22 @@ Activer le DAG du pipeline si nécessaire, puis déclencher une exécution manue
 
 **5. Vérifier l’exécution et les résultats**
 
-```bash
-docker compose ps
-docker compose logs -f airflow
-```
 
-Les résultats sont disponibles dans les répertoires `data/bronze`, `data/silver` et `data/gold`, selon les volumes configurés dans `compose.yaml`.
 
-Pour arrêter les services :
+Les résultats sont disponibles dans les répertoires `data/bronze`, `data/silver` et `data/gold`.
 
-```bash
-docker compose down
-```
-
-> **Note :** `admin/admin` est réservé au développement local. Utiliser des identifiants sécurisés dans tout environnement partagé ou de production.
 
 ## 2. Structure du projet
 
 ```text
 .
 ├── dags/
-│   └── chicago_taxi_pipeline.py   # Orchestration Airflow
+│   └── pipeline.py   # Orchestration Airflow
 ├── src/
-│   ├── download.py                # Extraction depuis l’API Socrata
+│   ├── download.py                # Extraction depuis l’API
 │   └── jobs/
-│       ├── bronze_to_silver.py    # Nettoyage et qualité des données
-│       └── silver_to_gold.py      # Agrégations métier
+│       ├── bronze_t_silver.py    # Nettoyage et qualité des données
+│       └── silver_t_gold.py      # Agrégations métier
 ├── data/
 │   ├── bronze/                    # Données brutes
 │   ├── silver/                    # Données nettoyées et rejets
@@ -90,19 +69,9 @@ docker compose down
 
 ## 3. Schéma d’architecture
 
-```mermaid
-flowchart TD
-    A["API Socrata<br/>Chicago Taxi Trips"] --> B["Python<br/>Pagination et filtre temporel"]
-    B --> C[("BRONZE<br/>Données brutes")]
-    C --> D["SILVER — PySpark<br/>Typage, nettoyage,<br/>déduplication et qualité"]
-    D --> E[("trips.csv<br/>Données nettoyées")]
-    D --> F[("rejected.csv<br/>Lignes rejetées et motifs")]
-    E --> G["GOLD — PySpark<br/>Agrégations métier"]
-    G --> H[("CSV analytiques<br/>KPIs prêts pour la BI")]
-    I["Apache Airflow"] -. "Orchestration" .-> B
-    I -.-> D
-    I -.-> G
-```
+<p align="center">
+  <img src="docs/architecture.png" alt="Data pipeline architecture" width="100%">
+</p>
 
 - **Bronze — Raw :** conserve les données extraites de la source.
 - **Silver — Cleaned :** convertit les types, rejette les lignes invalides avec leur motif, déduplique les trajets et crée des variables analytiques comme la date, l’heure, la durée et la vitesse.

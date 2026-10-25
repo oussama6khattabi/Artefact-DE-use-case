@@ -11,11 +11,11 @@ from jobs.silver_t_gold import silver_to_gold
 with DAG(
     dag_id="chicago_taxi_medallion",
     description="Chicago Taxi ingestion and medallion pipeline",
-    start_date=datetime(2024, 1, 1),
+    start_date=datetime(2026, 10, 25),
     schedule=None,
     catchup=False,
     default_args={
-        "owner": "data-engineering",
+        "owner": "oussama",
         "retries": 2,
         "retry_delay": timedelta(minutes=1),
     },

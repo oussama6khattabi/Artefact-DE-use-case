@@ -6,7 +6,6 @@
 
 - Docker Desktop avec Docker Compose
 - Git
-- Une connexion Internet pour accéder à l’API publique Socrata
 
 ### Étapes de lancement
 

@@ -1,231 +1,146 @@
 # Chicago Taxi Trips — Data Engineering Pipeline
 
-## 1. Présentation
+## 1. Prérequis et lancement
 
-Ce projet met en place un pipeline de traitement de données pour les trajets de taxis de Chicago. Il récupère les données depuis l’API publique de Chicago, les stocke dans une zone **Bronze**, les nettoie et les enrichit dans une zone **Silver**, puis produit des agrégations métier dans une zone **Gold**.
+### Prérequis
 
-L’orchestration est assurée par **Apache Airflow**, tandis que les transformations sont réalisées avec **PySpark**. L’environnement est lancé avec **Docker Compose** afin de limiter les dépendances à installer sur la machine hôte.
+- Docker Desktop avec Docker Compose
+- Git
+- Une connexion Internet pour accéder à l’API publique Socrata
 
-## 2. Prérequis
+### Étapes de lancement
 
-Installer les éléments suivants :
-
-- **Docker Desktop**, avec Docker Compose, démarré.
-- **Git**, si le dépôt doit être cloné.
-- Une connexion Internet pour interroger l’API publique Socrata.
-- Des ressources suffisantes pour exécuter Airflow et Spark dans des conteneurs.
-
-Aucune installation locale de Python, Java ou Spark n’est nécessaire si ces dépendances sont installées dans l’image Docker du projet.
-
-## 3. Lancement pas à pas
-
-### Étape 1 — Récupérer le projet
+**1. Cloner le dépôt**
 
 ```bash
 git clone https://github.com/artefactory-ma/test_technique_data_engineer_ma.git
 cd test_technique_data_engineer_ma
 ```
 
-Si le projet est déjà présent localement, se placer simplement à la racine du dépôt.
-
-### Étape 2 — Vérifier la structure
-
-La structure attendue est similaire à celle-ci :
-
-```text
-.
-├── dags/
-│   └── chicago_taxi_pipeline.py
-├── src/
-│   ├── download.py
-│   └── jobs/
-│       ├── bronze_to_silver.py
-│       └── silver_to_gold.py
-├── data/
-│   ├── bronze/
-│   ├── silver/
-│   └── gold/
-├── Dockerfile
-├── compose.yaml
-└── README.md
-```
-
-Les noms exacts des fichiers peuvent varier selon l’organisation retenue dans le dépôt. Les chemins de données utilisés par les scripts doivent correspondre aux volumes montés dans `compose.yaml`.
-
-### Étape 3 — Configurer les paramètres
-
-Si l’ingestion utilise des variables d’environnement, définir dans `compose.yaml` ou dans un fichier `.env` les dates de début et de fin, ainsi que la taille de page de l’API. Exemple :
-
-```env
-START_DATE=2023-01-01T00:00:00
-END_DATE=2023-01-02T00:00:00
-PAGE_LIMIT=50000
-```
-
-La période est volontairement configurable afin de faciliter les tests et de maîtriser le volume téléchargé. Adapter les noms des variables à ceux réellement lus par `download.py`.
-
-### Étape 4 — Construire l’image et démarrer les services
-
-À la racine du projet :
+**2. Démarrer Docker Desktop**, puis construire l’image et lancer les services :
 
 ```bash
 docker compose build
 docker compose up -d
 ```
 
-Vérifier l’état du conteneur :
+**3. Créer l’utilisateur administrateur Airflow**
+
+```bash
+docker compose exec airflow airflow users create \
+  --username admin \
+  --password admin \
+  --firstname Admin \
+  --lastname User \
+  --role Admin \
+  --email admin@example.com
+```
+
+Si l’utilisateur existe déjà, réinitialiser son mot de passe :
+
+```bash
+docker compose exec airflow airflow users reset-password \
+  --username admin \
+  --password admin
+```
+
+Ces commandes supposent que le service Docker Compose s’appelle `airflow`.
+
+**4. Accéder à Airflow**
+
+Ouvrir [http://localhost:8080](http://localhost:8080), puis se connecter avec `admin` / `admin`.
+
+Activer le DAG du pipeline si nécessaire, puis déclencher une exécution manuelle.
+
+**5. Vérifier l’exécution et les résultats**
 
 ```bash
 docker compose ps
 docker compose logs -f airflow
 ```
 
-Si le service Airflow porte un autre nom dans `compose.yaml`, remplacer `airflow` par le nom réel du service.
+Les résultats sont disponibles dans les répertoires `data/bronze`, `data/silver` et `data/gold`, selon les volumes configurés dans `compose.yaml`.
 
-### Étape 5 — Ouvrir Airflow
-
-Ouvrir [http://localhost:8080](http://localhost:8080).
-
-Avec une configuration Airflow Standalone, les identifiants initiaux sont généralement affichés dans les logs du conteneur ou stockés dans le fichier `standalone_admin_password.txt` du conteneur. Si le projet définit explicitement un utilisateur et un mot de passe, utiliser ces valeurs.
-
-### Étape 6 — Exécuter le pipeline
-
-Dans l’interface Airflow :
-
-1. Repérer le DAG du pipeline Chicago Taxi.
-2. L’activer si nécessaire.
-3. Déclencher une exécution manuelle.
-4. Consulter les logs de chaque tâche pour vérifier l’ingestion, le nettoyage et les agrégations.
-
-Le flux attendu est :
-
-```text
-download_to_bronze >> bronze_to_silver >> silver_to_gold
-```
-
-### Étape 7 — Vérifier les résultats
-
-Les fichiers sont écrits dans le répertoire `data/` de l’hôte, si ce répertoire est bien monté dans le conteneur :
-
-```text
-data/
-├── bronze/
-│   └── trips.csv
-├── silver/
-│   ├── trips.csv
-│   └── rejected.csv
-└── gold/
-    ├── daily_performance.csv
-    ├── hourly_demand.csv
-    ├── pickup_zone_performance.csv
-    ├── company_performance.csv
-    └── popular_routes.csv
-```
-
-Les fichiers Gold correspondent aux agrégations configurées dans `silver_to_gold.py`. Si les noms diffèrent dans le code, se référer aux chemins définis dans ce script.
-
-### Arrêter l’environnement
+Pour arrêter les services :
 
 ```bash
 docker compose down
 ```
 
-Pour supprimer également les volumes Docker persistants (par exemple les métadonnées Airflow), utiliser `docker compose down -v`. **Attention :** cette commande supprime les données stockées dans ces volumes.
+> **Note :** `admin/admin` est réservé au développement local. Utiliser des identifiants sécurisés dans tout environnement partagé ou de production.
 
-## 4. Schéma d’architecture
+## 2. Structure du projet
+
+```text
+.
+├── dags/
+│   └── chicago_taxi_pipeline.py   # Orchestration Airflow
+├── src/
+│   ├── download.py                # Extraction depuis l’API Socrata
+│   └── jobs/
+│       ├── bronze_to_silver.py    # Nettoyage et qualité des données
+│       └── silver_to_gold.py      # Agrégations métier
+├── data/
+│   ├── bronze/                    # Données brutes
+│   ├── silver/                    # Données nettoyées et rejets
+│   └── gold/                      # Indicateurs analytiques
+├── Dockerfile                     # Image avec les dépendances
+├── compose.yaml                   # Services Docker
+└── README.md
+```
+
+## 3. Schéma d’architecture
 
 ```mermaid
 flowchart TD
-    A["API publique Socrata<br/>Chicago Taxi Trips"] --> B["Ingestion Python<br/>pagination + filtre temporel"]
-    B --> C[("Bronze<br/>trips.csv brut")]
-    C --> D["Airflow<br/>orchestration des tâches"]
-    D --> E["PySpark<br/>validation, nettoyage,<br/>déduplication, enrichissement"]
-    E --> F[("Silver<br/>trips.csv nettoyé")]
-    E --> G[("Rejets<br/>rejected.csv + motif")]
-    F --> H["PySpark<br/>agrégations métier"]
-    H --> I[("Gold<br/>CSV analytiques")]
-    I --> J["Consommation<br/>analyse / BI"]
+    A["API Socrata<br/>Chicago Taxi Trips"] --> B["Python<br/>Pagination et filtre temporel"]
+    B --> C[("BRONZE<br/>Données brutes")]
+    C --> D["SILVER — PySpark<br/>Typage, nettoyage,<br/>déduplication et qualité"]
+    D --> E[("trips.csv<br/>Données nettoyées")]
+    D --> F[("rejected.csv<br/>Lignes rejetées et motifs")]
+    E --> G["GOLD — PySpark<br/>Agrégations métier"]
+    G --> H[("CSV analytiques<br/>KPIs prêts pour la BI")]
+    I["Apache Airflow"] -. "Orchestration" .-> B
+    I -.-> D
+    I -.-> G
 ```
 
-Airflow orchestre les étapes et leurs dépendances ; il ne réalise pas lui-même les transformations. Python gère l’appel à l’API, et Spark traite les données dans les étapes Silver et Gold.
+- **Bronze — Raw :** conserve les données extraites de la source.
+- **Silver — Cleaned :** convertit les types, rejette les lignes invalides avec leur motif, déduplique les trajets et crée des variables analytiques comme la date, l’heure, la durée et la vitesse.
+- **Gold — Curated :** produit les agrégations métier utilisées pour l’analyse et le reporting.
 
-## 5. Choix techniques et arbitrages
+## 4. Choix techniques et arbitrages
 
-### Python et l’API Socrata
+- **Python et l’API Socrata :** pagination et filtrage temporel pour maîtriser le volume téléchargé.
+- **PySpark :** transformations déclaratives, typage explicite et agrégations réutilisables.
+- **Apache Airflow :** orchestration des tâches, gestion des dépendances et suivi des exécutions.
+- **Docker Compose :** environnement reproductible sans installation locale de Java ou Spark.
+- **Gestion des rejets :** les erreurs bloquantes sont isolées dans `rejected.csv`. Les anomalies non bloquantes sont signalées afin de préserver les données potentiellement utiles.
+- **CSV unique par sortie :** format simple à inspecter et à livrer. L’utilisation de `collect()` facilite l’écriture d’un fichier unique, mais rapatrie les données en mémoire côté pilote ; elle n’est donc adaptée qu’à des volumes limités.
 
-- Utilisation de Python pour appeler l’API et gérer la pagination.
-- Filtrage temporel côté source pour limiter le volume transféré.
-- Pagination par offset/limit afin de récupérer plusieurs pages.
-- L’ordre des résultats doit être stable pendant la pagination ; lorsque c’est possible, utiliser un ordre basé sur des colonnes stables telles que l’identifiant et l’horodatage.
+La déduplication repose sur `trip_id`, supposé identifier un trajet de manière unique.
 
-**Arbitrage :** cette approche reste simple et adaptée à un exercice technique. Pour un flux de très grande taille ou une source qui évolue pendant l’extraction, une stratégie d’incrément plus robuste serait préférable.
+## 5. Agrégations Gold
 
-### Architecture Medallion
+Chaque agrégation est écrite dans un fichier CSV distinct.
 
-- **Bronze :** données récupérées depuis la source, avec un minimum de transformations afin de préserver une copie exploitable de l’entrée.
-- **Silver :** typage, validation, déduplication et création de colonnes utiles à l’analyse.
-- **Gold :** agrégations orientées métier pour faciliter la consommation analytique.
+| Fichier | Granularité | Indicateurs et objectif |
+|---|---|---|
+| `daily_performance.csv` | Par date | Nombre de trajets, revenu total, valeur moyenne d’un trajet, durée moyenne, distance moyenne, vitesse moyenne et pourcentage moyen de pourboire. Permet de suivre l’évolution quotidienne de l’activité. |
+| `hourly_demand.csv` | Par heure de prise en charge | Nombre de trajets, revenu total, valeur moyenne d’un trajet et durée moyenne. Permet d’identifier les heures de pointe et les périodes de faible demande. |
+| `pickup_zone_performance.csv` | Par zone communautaire de départ | Nombre de trajets, revenu total, valeur moyenne, distance moyenne et pourcentage moyen de pourboire. Permet de comparer les zones de prise en charge. |
+| `company_performance.csv` | Par compagnie | Nombre de trajets, revenu total, valeur moyenne, durée moyenne, pourcentage moyen de pourboire et vitesse moyenne. Permet de comparer l’activité entre compagnies. |
+| `popular_routes.csv` | Par couple zone de départ–zone d’arrivée | Nombre de trajets, revenu total, distance moyenne et durée moyenne. Permet d’identifier les itinéraires les plus fréquentés et leur poids économique. |
 
-Cette séparation rend le traitement plus lisible, facilite le diagnostic des erreurs et permet de réexécuter les transformations sans interroger systématiquement l’API.
+**Définitions :**
+- Le revenu est calculé à partir de `trip_total`.
+- Le pourcentage de pourboire est calculé comme `tips / fare × 100`, uniquement lorsque `fare` est positif.
+- Les zones ou compagnies manquantes doivent être interprétées comme des valeurs inconnues, et non comme des catégories métier réelles.
 
-### Nettoyage et qualité des données
+## 6. Avec plus de temps
 
-La couche Silver :
-
-- convertit les dates et mesures numériques ;
-- écarte de la sortie Silver les lignes présentant des erreurs bloquantes, par exemple un identifiant manquant, un horodatage de départ invalide, des montants ou mesures négatifs, ou une fin antérieure au début ;
-- conserve les lignes rejetées dans un fichier séparé avec un motif explicatif ;
-- déduplique les trajets à partir de `trip_id` ;
-- ajoute des indicateurs tels que la date du trajet, l’heure de départ, la durée en minutes, la vitesse moyenne, le pourcentage de pourboire et le revenu par mile ;
-- signale certaines anomalies non nécessairement bloquantes via `data_quality_flag`.
-
-**Arbitrage :** les anomalies qui peuvent être informatives sont signalées plutôt que supprimées automatiquement. Par exemple, une durée nulle ou une distance nulle mérite une analyse, mais ne suffit pas toujours à conclure que le trajet est inutilisable. Les règles de rejet doivent être ajustées à la qualité réelle des données et aux exigences métier.
-
-La déduplication par `trip_id` est une règle simple. Si la source contient plusieurs versions légitimes d’un même identifiant, il faudrait une règle déterministe fondée sur un horodatage de mise à jour ou une autre information métier.
-
-### PySpark
-
-PySpark a été choisi pour structurer les transformations dans un moteur adapté au traitement distribué, même si le volume utilisé pour les tests peut être traité sur une seule machine.
-
-Les colonnes sont typées explicitement et les agrégations sont réalisées avec les fonctions Spark SQL. Cela rend les traitements plus déclaratifs et facilite leur évolution.
-
-### Airflow et Docker Compose
-
-- **Airflow** gère les dépendances, les relances et les logs des tâches.
-- **Docker Compose** fournit un environnement reproductible et réduit les problèmes liés aux différences entre postes de développement.
-- Les répertoires de données sont montés dans le conteneur afin de rendre les sorties accessibles depuis l’hôte.
-
-### Sorties CSV uniques
-
-Pour cet exercice, chaque sortie est matérialisée sous forme d’un fichier CSV unique. Le code peut utiliser `collect()` puis le module `csv` de Python pour écrire ce fichier.
-
-**Arbitrage et limite :** cette méthode répond à une exigence de livrables CSV faciles à consulter, mais `collect()` rapatrie toutes les lignes en mémoire côté pilote. Elle est acceptable uniquement pour un jeu de données limité ou des agrégations de petite taille. Pour un volume important, il vaut mieux laisser Spark écrire en parallèle, produire un dossier CSV avec plusieurs part-files, ou mettre en place une stratégie contrôlée de fusion des fichiers.
-
-Les fichiers Gold sont des agrégats tels que la performance journalière, la demande par heure, la performance par zone de prise en charge, les indicateurs par compagnie et les itinéraires populaires. Le chiffre d’affaires est calculé à partir de `trip_total`, tandis que les pourcentages de pourboire sont calculés à partir de `tips / fare` lorsque `fare` est positif.
-
-## 6. Améliorations possibles avec plus de temps
-
-1. **Tests automatisés :** ajouter des tests unitaires pour les règles de qualité, les calculs dérivés, les doublons et les agrégations, ainsi que des tests d’intégration du DAG.
-2. **Qualité de données formalisée :** définir des règles explicites, mesurer les taux de rejet et de nullité, et publier un rapport qualité à chaque exécution.
-3. **Incrémental et reprise :** rendre l’ingestion idempotente, enregistrer le dernier intervalle traité et gérer les relances sans dupliquer les données.
-4. **Pagination plus robuste :** traiter les limites de l’API, les erreurs HTTP, le backoff exponentiel, les réponses incomplètes et les changements de données pendant l’extraction.
-5. **Stockage analytique :** privilégier Parquet ou Delta pour les zones Bronze/Silver/Gold, avec CSV uniquement comme format d’export si nécessaire.
-6. **Évolutivité :** éviter `collect()` sur la totalité de Silver ; partitionner les données et limiter la collecte aux petits agrégats.
-7. **Observabilité :** ajouter des métriques sur le nombre de lignes extraites, nettoyées et rejetées, la durée des tâches et les volumes traités.
-8. **Sécurité et configuration :** sortir les secrets et paramètres sensibles du code, utiliser des variables d’environnement ou un gestionnaire de secrets, et appliquer le principe du moindre privilège.
-9. **Optimisation Spark :** analyser les plans d’exécution, choisir les partitions appropriées et mesurer les performances avant de modifier le partitionnement ou la stratégie de jointure.
-10. **CI/CD :** ajouter linting, tests, validation du DAG et construction de l’image dans un pipeline d’intégration continue.
-11. **Gouvernance et traçabilité :** documenter le schéma, la provenance, les règles de transformation et la version des données traitées.
-12. **Déploiement de production :** remplacer l’environnement Airflow Standalone de développement par un déploiement adapté, avec une base de métadonnées dédiée, une gestion robuste des logs et une stratégie de supervision.
-
-## 7. Limites connues
-
-- Les chemins `/opt/airflow/data/...` supposent que le volume `./data:/opt/airflow/data` est défini dans Compose.
-- Les variables d’environnement de date et de pagination doivent correspondre aux noms réellement utilisés par le script d’ingestion.
-- La déduplication sur `trip_id` suppose que cet identifiant représente un trajet unique.
-- Les sorties CSV uniques et l’utilisation de `collect()` sont adaptées à un prototype de taille maîtrisée, pas à une table Silver volumineuse.
-- Les indicateurs de qualité sont des règles de départ et doivent être validés avec les besoins métier.
-
-## 8. Conclusion
-
-Le projet propose un pipeline de données de bout en bout, orchestré et reproductible, qui sépare les données brutes, les données nettoyées et les agrégations analytiques. Les principaux compromis visent à conserver une implémentation simple et facile à exécuter dans le cadre d’un test technique, tout en identifiant les évolutions nécessaires pour une utilisation en production.
+- **Tests :** ajouter des tests unitaires et d’intégration pour l’ingestion, les règles de qualité et les agrégations.
+- **Robustesse :** renforcer la gestion des erreurs API, la pagination, les reprises et l’idempotence des exécutions.
+- **Performance :** utiliser Parquet ou Delta pour les données intermédiaires et éviter `collect()` sur de gros volumes.
+- **Observabilité :** suivre les volumes extraits, nettoyés et rejetés, la durée des tâches et les erreurs.
+- **Industrialisation :** mettre en place CI/CD, une gestion sécurisée des secrets et un déploiement Airflow adapté à la production.

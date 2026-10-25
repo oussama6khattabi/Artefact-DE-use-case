@@ -101,8 +101,12 @@ Chaque agrégation est écrite dans un fichier CSV distinct.
 
 ## 6. Avec plus de temps
 
+- **Assistant IA de recommandation pour les chauffeurs de taxi :** un outil qui analyse l'historique des courses (zones, horaires, tarifs) et conseille en temps réel chaque chauffeur pour qu'il gagne plus et roule moins à vide.
+- **Fonctionnalité 1 : zone à privilégier.** Après chaque course, l'outil indique la zone où se rendre dans les 15 prochaines minutes pour trouver la course la plus rentable, en tenant compte de la distance à parcourir.
+- **Fonctionnalité 2 : prévision des heures de pointe.** L'outil annonce les périodes de forte demande de la journée et de la semaine par quartier, pour aider le chauffeur à planifier son shift.
+- **Déploiement sur le cloud (AWS, GCP ou Azure) :** stockage objet pour le data lake, Spark et Airflow managés, avec une puissance de calcul qui s'adapte à la charge au lieu d'être limitée à une seule machine.
+- **Exploitation de tout l'historique (2013-2023) :** traiter les dix années de courses au lieu de 15 jours, pour capter les saisons, les jours fériés et les événements, et obtenir des recommandations bien plus fiables.
+- **Dashboard Power BI :** carte de la demande, zones recommandées par heure et évolution de l'activité.
 - **Tests :** ajouter des tests unitaires et d’intégration pour l’ingestion, les règles de qualité et les agrégations.
 - **Robustesse :** renforcer la gestion des erreurs API, la pagination, les reprises et l’idempotence des exécutions.
 - **Performance :** utiliser Parquet ou Delta pour les données intermédiaires et éviter `collect()` sur de gros volumes.
-- **Observabilité :** suivre les volumes extraits, nettoyés et rejetés, la durée des tâches et les erreurs.
-- **Industrialisation :** mettre en place CI/CD, une gestion sécurisée des secrets et un déploiement Airflow adapté à la production.

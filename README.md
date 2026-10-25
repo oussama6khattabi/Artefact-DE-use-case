@@ -12,8 +12,8 @@
 **1. Cloner le dépôt**
 
 ```bash
-git clone https://github.com/artefactory-ma/test_technique_data_engineer_ma.git
-cd test_technique_data_engineer_ma
+git clone [https://github.com/oussama6khattabi/Artefact-DE-use-case.git]
+cd Artefact-DE-use-case
 ```
 
 **2. Démarrer Docker Desktop**, puis construire l’image et lancer les services :

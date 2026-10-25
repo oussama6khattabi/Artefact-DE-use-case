@@ -1,0 +1,27 @@
+services:
+  airflow:
+    build: .
+    container_name: chicago-airflow
+    command: standalone
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+      START: "2022-12-15T00:00:00"
+      END: "2022-12-30T00:00:00"
+      LIMIT: "1000"
+      PYTHONPATH: /opt/airflow/src
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
+      - airflow-logs:/opt/airflow/logs
+    restart: unless-stopped
+
+volumes:
+  airflow-logs:

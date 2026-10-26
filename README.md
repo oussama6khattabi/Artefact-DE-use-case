@@ -12,7 +12,7 @@
 **1. Cloner le dépôt**
 
 ```bash
-git clone [https://github.com/oussama6khattabi/Artefact-DE-use-case.git]
+git clone https://github.com/oussama6khattabi/Artefact-DE-use-case.git
 cd Artefact-DE-use-case
 ```
 
